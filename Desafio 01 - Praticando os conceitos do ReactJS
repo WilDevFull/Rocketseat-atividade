@@ -1,0 +1,275 @@
+// App.jsx
+import React, { useState, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+
+function TodoApp() {
+  const [tasks, setTasks] = useState([]);
+  const [newTaskText, setNewTaskText] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [theme, setTheme] = useState('light');
+
+  // Carrega tarefas do localStorage ao iniciar
+  useEffect(() => {
+    const savedTasks = localStorage.getItem('todo-tasks');
+    const savedTheme = localStorage.getItem('todo-theme');
+    
+    if (savedTasks) setTasks(JSON.parse(savedTasks));
+    if (savedTheme) setTheme(savedTheme);
+    
+    setIsLoading(false);
+  }, []);
+
+  // Salva tarefas no localStorage quando mudam
+  useEffect(() => {
+    if (!isLoading) {
+      localStorage.setItem('todo-tasks', JSON.stringify(tasks));
+    }
+  }, [tasks, isLoading]);
+
+  // Salva tema no localStorage
+  useEffect(() => {
+    localStorage.setItem('todo-theme', theme);
+    document.body.className = theme;
+  }, [theme]);
+
+  // Adiciona nova tarefa
+  const handleAddTask = () => {
+    if (newTaskText.trim() === '') return;
+
+    const newTask = {
+      id: crypto.randomUUID(),
+      text: newTaskText,
+      isDone: false,
+      createdAt: new Date().toISOString(),
+      priority: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
+      category: ['work', 'personal', 'shopping', 'other'][Math.floor(Math.random() * 4)]
+    };
+
+    setTasks([...tasks, newTask]);
+    setNewTaskText('');
+  };
+
+  // Marca/desmarca tarefa
+  const toggleTask = (id) => {
+    const updatedTasks = tasks.map(task =>
+      task.id === id ? { ...task, isDone: !task.isDone } : task
+    );
+    setTasks(updatedTasks);
+  };
+
+  // Remove tarefa
+  const removeTask = (id) => {
+    const updatedTasks = tasks.filter(task => task.id !== id);
+    setTasks(updatedTasks);
+  };
+
+  // Filtra tarefas
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'completed') return task.isDone;
+    if (filter === 'active') return !task.isDone;
+    return true;
+  });
+
+  // Ordena tarefas
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    if (a.isDone !== b.isDone) return a.isDone ? 1 : -1;
+    const priorityOrder = { high: 1, medium: 2, low: 3 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
+  });
+
+  // Calcula progresso
+  const completedTasks = tasks.filter(task => task.isDone).length;
+  const progress = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+  // Toggle tema
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  };
+
+  if (isLoading) {
+    return <div style={{ textAlign: 'center', marginTop: 50 }}>Carregando...</div>;
+  }
+
+  return (
+    <div className={`app ${theme}`} style={{ 
+      maxWidth: 500, 
+      margin: 'auto', 
+      padding: 20,
+      backgroundColor: theme === 'dark' ? '#333' : '#fff',
+      color: theme === 'dark' ? '#fff' : '#333',
+      minHeight: '100vh'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>📝 To-Do List</h1>
+        <button onClick={toggleTheme} style={{ padding: '5px 10px' }}>
+          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <input
+          type="text"
+          placeholder="Nova tarefa..."
+          value={newTaskText}
+          onChange={(e) => setNewTaskText(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleAddTask()}
+          style={{ 
+            flex: 1, 
+            padding: 10,
+            backgroundColor: theme === 'dark' ? '#555' : '#fff',
+            color: theme === 'dark' ? '#fff' : '#333',
+            border: `1px solid ${theme === 'dark' ? '#777' : '#ddd'}`
+          }}
+        />
+        <button 
+          onClick={handleAddTask}
+          style={{ 
+            padding: '10px 15px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer'
+          }}
+        >
+          Adicionar
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <button 
+          onClick={() => setFilter('all')}
+          style={{ 
+            backgroundColor: filter === 'all' ? '#2196F3' : (theme === 'dark' ? '#555' : '#eee'),
+            color: filter === 'all' ? 'white' : 'inherit'
+          }}
+        >
+          Todas
+        </button>
+        <button 
+          onClick={() => setFilter('active')}
+          style={{ 
+            backgroundColor: filter === 'active' ? '#2196F3' : (theme === 'dark' ? '#555' : '#eee'),
+            color: filter === 'active' ? 'white' : 'inherit'
+          }}
+        >
+          Pendentes
+        </button>
+        <button 
+          onClick={() => setFilter('completed')}
+          style={{ 
+            backgroundColor: filter === 'completed' ? '#2196F3' : (theme === 'dark' ? '#555' : '#eee'),
+            color: filter === 'completed' ? 'white' : 'inherit'
+          }}
+        >
+          Concluídas
+        </button>
+      </div>
+
+      <ul style={{ listStyle: 'none', padding: 0, marginTop: 20 }}>
+        {sortedTasks.length > 0 ? (
+          sortedTasks.map(task => (
+            <li 
+              key={task.id} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                marginBottom: 10,
+                padding: 10,
+                backgroundColor: theme === 'dark' ? '#444' : '#f9f9f9',
+                borderRadius: 4,
+                borderLeft: `4px solid ${
+                  task.priority === 'high' ? '#f44336' : 
+                  task.priority === 'medium' ? '#ff9800' : '#4CAF50'
+                }`
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={task.isDone}
+                onChange={() => toggleTask(task.id)}
+                style={{ marginRight: 10 }}
+              />
+              <div style={{ flex: 1 }}>
+                <span style={{
+                  textDecoration: task.isDone ? 'line-through' : 'none',
+                  opacity: task.isDone ? 0.7 : 1
+                }}>
+                  {task.text}
+                </span>
+                <div style={{ 
+                  fontSize: 12, 
+                  marginTop: 4,
+                  color: theme === 'dark' ? '#bbb' : '#666'
+                }}>
+                  <span style={{ 
+                    backgroundColor: theme === 'dark' ? '#555' : '#eee',
+                    padding: '2px 6px',
+                    borderRadius: 10,
+                    marginRight: 8
+                  }}>
+                    {task.category}
+                  </span>
+                  {new Date(task.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+              <button
+                onClick={() => removeTask(task.id)}
+                style={{ 
+                  background: 'none',
+                  border: 'none',
+                  color: theme === 'dark' ? '#ff6666' : '#ff4444',
+                  cursor: 'pointer',
+                  fontSize: 16
+                }}
+              >
+                ❌
+              </button>
+            </li>
+          ))
+        ) : (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: 20,
+            color: theme === 'dark' ? '#aaa' : '#666'
+          }}>
+            {filter === 'all' 
+              ? 'Nenhuma tarefa adicionada ainda!' 
+              : filter === 'completed' 
+                ? 'Nenhuma tarefa concluída!' 
+                : 'Todas as tarefas estão concluídas!'}
+          </div>
+        )}
+      </ul>
+
+      <div style={{ marginTop: 30 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <strong>Progresso:</strong>
+          <span>{completedTasks}/{tasks.length} ({progress}%)</span>
+        </div>
+        <div style={{ 
+          background: theme === 'dark' ? '#555' : '#eee', 
+          height: 10, 
+          borderRadius: 5, 
+          marginTop: 5 
+        }}>
+          <div
+            style={{
+              width: `${progress}%`,
+              height: '100%',
+              background: progress === 100 ? '#4CAF50' : '#2196F3',
+              borderRadius: 5,
+              transition: 'width 0.3s ease'
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Renderização do aplicativo
+const container = document.getElementById('root');
+const root = createRoot(container);
+root.render(<TodoApp />);
